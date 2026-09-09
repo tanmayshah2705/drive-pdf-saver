@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Save as PDF to Google Drive</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <div class="header">
+      <img src="../icons/icon48.png" alt="Icon" class="logo">
+      <h2>Save as PDF</h2>
+    </div>
+
+    <hr class="divider">
+
+    <div id="supported-view" class="view hidden">
+      <div class="info-row">
+        <span class="label">Current file:</span>
+        <span id="file-name" class="value file-name">Detecting...</span>
+      </div>
+
+      <div class="info-row">
+        <span class="label">Type:</span>
+        <span id="file-type" class="value">Google Docs</span>
+      </div>
+
+      <div class="info-row">
+        <span class="label">Destination:</span>
+        <span class="value destination">Same folder</span>
+      </div>
+
+      <div class="info-row">
+        <span class="label">Status:</span>
+        <span id="status-badge" class="badge status-ready">Ready</span>
+      </div>
+
+      <div id="status-detail" class="status-detail"></div>
+
+      <button id="save-btn" class="primary-btn">Save as PDF</button>
+    </div>
+
+    <div id="unsupported-view" class="view hidden">
+      <div class="empty-state">
+        <p class="empty-title">No supported Google Drive file is open.</p>
+        <p class="empty-desc">Open any Google Doc, Sheet, Slide, Office document (Word, Excel, PowerPoint), text file, or image in Google Drive to convert it to PDF.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

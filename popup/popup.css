@@ -1,0 +1,160 @@
+/* popup/popup.css */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: #202124;
+  background-color: #ffffff;
+}
+
+.popup-container {
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 24px;
+  height: 24px;
+}
+
+.header h2 {
+  font-size: 16px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background-color: #dadce0;
+  margin: 12px 0 14px 0;
+}
+
+.view.hidden {
+  display: none;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.label {
+  color: #5f6368;
+  font-size: 12px;
+}
+
+.value {
+  font-weight: 500;
+  color: #202124;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value.file-name {
+  color: #1a73e8;
+}
+
+.value.destination {
+  color: #188038;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.status-ready {
+  background-color: #e6f4ea;
+  color: #137333;
+}
+
+.status-working {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+  animation: pulse 1.5s infinite;
+}
+
+.status-success {
+  background-color: #e6f4ea;
+  color: #137333;
+}
+
+.status-error {
+  background-color: #fce8e6;
+  color: #c5221f;
+}
+
+.status-detail {
+  font-size: 12px;
+  color: #5f6368;
+  margin: 10px 0;
+  min-height: 16px;
+  line-height: 1.4;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #1a73e8;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.primary-btn:hover:not(:disabled) {
+  background-color: #1557b0;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
+}
+
+.primary-btn:disabled {
+  background-color: #f1f3f4;
+  color: #80868b;
+  cursor: not-allowed;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 12px 4px;
+}
+
+.empty-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #3c4043;
+  margin-bottom: 6px;
+}
+
+.empty-desc {
+  font-size: 12px;
+  color: #70757a;
+  line-height: 1.4;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}

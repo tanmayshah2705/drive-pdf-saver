@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "Save as PDF to Google Drive",
+  "version": "1.0.0",
+  "description": "Right-click on any Google Doc, Sheet, Slide, Office file, text document, or image in Google Drive to save it as PDF directly into the same folder.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "identity",
+    "contextMenus",
+    "activeTab",
+    "notifications",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://docs.google.com/*",
+    "https://drive.google.com/*",
+    "https://www.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "48459272093-tmv1556u1hblmk7i6hga8urufap8linh.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://docs.google.com/document/*",
+        "https://docs.google.com/spreadsheets/*",
+        "https://docs.google.com/presentation/*",
+        "https://docs.google.com/drawings/*",
+        "https://drive.google.com/file/*",
+        "https://drive.google.com/open*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}
