@@ -50,37 +50,23 @@ header{
 
 /* ─── Hero ──────────────────────────────────────────────── */
 .hero{
-  background:linear-gradient(145deg,#0f4da8 0%,#1a73e8 45%,#1e88e5 100%);
-  color:#fff;text-align:center;
+  background:linear-gradient(160deg,#e8f0fe 0%,#f0f4ff 60%,#f8f9fa 100%);
+  color:var(--ink);text-align:center;
   padding:var(--hero-top) 24px var(--hero-bot);
   position:relative;overflow:hidden;
-}
-.hero::before{
-  content:"";position:absolute;inset:0;
-  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-}
-.hero-badge{
-  display:inline-flex;align-items:center;gap:6px;
-  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
-  border-radius:var(--rp);padding:4px 14px;
-  font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  margin-bottom:28px;position:relative;
+  border-bottom:1px solid var(--border);
 }
 .hero h1{
   font-size:clamp(2rem,5.5vw,3.2rem);font-weight:800;
   line-height:1.15;margin-bottom:18px;position:relative;
-}
-.hero h1 span{
-  background:linear-gradient(90deg,#ffd54f,#ffab40);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  color:var(--ink);
 }
 .hero-sub{
-  font-size:1.1rem;opacity:.9;max-width:560px;
-  margin:0 auto 40px;position:relative;
+  font-size:1.1rem;color:var(--ink2);max-width:580px;
+  margin:0 auto 0;position:relative;
 }
-.hero-cta{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;position:relative}
 
-/* Primary download button */
+/* Primary download button (nav only) */
 .btn-dl{
   display:inline-flex;align-items:center;gap:10px;
   background:#fff;color:var(--b0);
@@ -92,21 +78,6 @@ header{
 .btn-dl:hover{transform:translateY(-3px);box-shadow:0 10px 32px rgba(0,0,0,.3);text-decoration:none;color:var(--b1)}
 .btn-dl svg{flex-shrink:0}
 
-/* Ghost button */
-.btn-ghost{
-  display:inline-flex;align-items:center;gap:8px;
-  border:2px solid rgba(255,255,255,.55);color:#fff;
-  font-size:.9rem;font-weight:600;
-  padding:14px 26px;border-radius:var(--rp);
-  transition:background .15s,border-color .15s;
-}
-.btn-ghost:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.8);text-decoration:none}
-
-.hero-note{
-  margin-top:26px;font-size:.78rem;opacity:.65;position:relative;
-}
-.hero-note a{color:rgba(255,255,255,.85)}
-
 /* wave */
 .hero-wave{display:block;margin-top:60px;position:relative}
 .hero-wave svg{display:block;width:100%}
@@ -117,6 +88,10 @@ section:nth-child(even){background:var(--card)}
 .sec-label{font-size:.75rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--b0);margin-bottom:10px}
 .sec-title{font-size:clamp(1.5rem,3vw,2.1rem);font-weight:700;margin-bottom:12px;line-height:1.2}
 .sec-sub{font-size:1rem;color:var(--ink2);max-width:580px}
+/* Tight intro block — label + heading + sub as one visual unit */
+.sec-intro{margin-bottom:44px}
+.sec-intro .sec-label{margin-bottom:6px}
+.sec-intro .sec-title{margin-bottom:8px}
 
 /* ─── Feature cards ──────────────────────────────────────── */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:44px}
@@ -303,48 +278,17 @@ footer{background:#202124;color:rgba(255,255,255,.65);padding:44px 24px}
 <!-- ── Hero ─────────────────────────────────────────────── -->
 <section class="hero" aria-label="Product hero">
   <div class="wrap">
-    <div class="hero-badge">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#fff" stroke-width="1.2"/><path d="M6 4v3M6 8.5v.5" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>
-      Chrome Extension · Manifest V3 · Free &amp; Open Source
-    </div>
-
-    <h1>Save Drive files as PDF.<br><span>One click. Multiple accounts.</span></h1>
+    <h1>Save Drive files as PDF directly to Drive.</h1>
 
     <p class="hero-sub">
       Right-click any Google Doc, Sheet, Slide, Office file or image in Google Drive
       → PDF saved in the <em>same folder</em>. Updates existing PDFs in-place. Supports multiple Google accounts simultaneously. No server. No tracking.
     </p>
-
-    <div class="hero-cta">
-      <a class="btn-dl"
-         href="https://github.com/tanmayshah2705/drive-pdf-saver/releases/download/v1.0.0/Drive-PDF-Saver-v1.0.0.zip"
-         download="Drive-PDF-Saver-v1.0.0.zip">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <path d="M11 3v11M11 14l-4-4M11 14l4-4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M3 18h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-        </svg>
-        Download Extension v1.0.0
-      </a>
-
-      <a class="btn-ghost"
-         href="https://github.com/tanmayshah2705/drive-pdf-saver"
-         target="_blank" rel="noopener">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-        </svg>
-        View on GitHub
-      </a>
-    </div>
-
-    <p class="hero-note">
-      Free · MIT License ·
-      <a href="https://github.com/tanmayshah2705/drive-pdf-saver/releases/tag/v1.0.0" target="_blank" rel="noopener">Release notes ↗</a>
-    </p>
   </div>
 
   <div class="hero-wave">
-    <svg viewBox="0 0 1440 56" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-      <path d="M0 56V28C360 56 1080 0 1440 28V56H0Z" fill="#f8f9fa"/>
+    <svg viewBox="0 0 1440 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      <path d="M0 40V20C360 40 1080 0 1440 20V40H0Z" fill="#f8f9fa"/>
     </svg>
   </div>
 </section>
@@ -352,9 +296,11 @@ footer{background:#202124;color:rgba(255,255,255,.65);padding:44px 24px}
 <!-- ── Features ──────────────────────────────────────────── -->
 <section id="features" aria-labelledby="feat-title">
   <div class="wrap">
-    <p class="sec-label reveal">Features</p>
-    <h2 class="sec-title reveal" id="feat-title">Everything you need. Nothing you don't.</h2>
-    <p class="sec-sub reveal">Built entirely on official Google Drive API v3. No backend server, no middleman, no subscriptions.</p>
+    <div class="sec-intro reveal">
+      <p class="sec-label">Features</p>
+      <h2 class="sec-title" id="feat-title">Everything you need. Nothing you don't.</h2>
+      <p class="sec-sub">Built entirely on official Google Drive API v3. No backend server, no middleman, no subscriptions.</p>
+    </div>
 
     <div class="cards">
       <div class="card reveal">
@@ -732,28 +678,6 @@ footer{background:#202124;color:rgba(255,255,255,.65);padding:44px 24px}
         <div class="answer">Drive PDF Saver supports Google Workspace files, Microsoft Office formats (.docx, .xlsx, .pptx, .doc, .xls, .ppt), OpenDocument files (.odt, .ods, .odp), text/data files (.txt, .rtf, .html, .csv, .tsv), and images (.png, .jpg, .jpeg, .webp, .gif, .bmp). Video, audio, ZIP archives, and binary executables cannot be converted to PDF.</div>
       </details>
     </div>
-  </div>
-</section>
-
-<!-- ── CTA strip ─────────────────────────────────────────── -->
-<section class="cta-strip" aria-label="Download CTA">
-  <div class="wrap">
-    <h2>Ready to save your first PDF?</h2>
-    <p>Download · Extract · Load unpacked · Connect · Right-click. That's it.</p>
-    <a class="btn-dl"
-       href="https://github.com/tanmayshah2705/drive-pdf-saver/releases/download/v1.0.0/Drive-PDF-Saver-v1.0.0.zip"
-       download="Drive-PDF-Saver-v1.0.0.zip">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-        <path d="M11 3v11M11 14l-4-4M11 14l4-4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M3 18h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-      </svg>
-      Download Drive PDF Saver v1.0.0
-    </a>
-    <p class="note">
-      <a href="https://github.com/tanmayshah2705/drive-pdf-saver/releases/tag/v1.0.0" target="_blank" rel="noopener">Release notes</a>
-      &nbsp;·&nbsp;
-      <a href="https://github.com/tanmayshah2705/drive-pdf-saver" target="_blank" rel="noopener">GitHub Repository</a>
-    </p>
   </div>
 </section>
 
