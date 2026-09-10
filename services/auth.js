@@ -66,34 +66,112 @@ export async function clearAuthToken(token) {
 }
 
 /**
- * Verifies that the current OAuth token has access to the specified Google Drive file.
- * Catches multi-account mismatch issues before attempting export operations.
+ * Retrieves the profile information of the currently authorized Google Drive account.
+ * Uses official drive/v3/about endpoint without requiring additional OAuth scopes.
  * 
- * @param {string} token OAuth access token
- * @param {string} fileId Google Drive file ID
- * @returns {Promise<{ id: string, name: string, mimeType: string, parents?: string[] }>}
+ * @param {string} token 
+ * @returns {Promise<{ email: string, name: string } | null>}
  */
-export async function verifyCurrentFileAccess(token, fileId) {
-  log(`Verifying access permissions for file ID: ${fileId}`);
+export async function getAuthorizedUser(token) {
+  if (!token) return null;
+  try {
+    const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress)', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return {
+      email: data.user?.emailAddress || '',
+      name: data.user?.displayName || ''
+    };
+  } catch (err) {
+    log('Failed to fetch authorized user profile:', err);
+    return null;
+  }
+}
+
+/**
+ * Manually evicts the current cached token and triggers interactive account re-authorization.
+ * Useful for user-driven "Switch Account" workflows in the popup UI.
+ * 
+ * @returns {Promise<{ token: string, user: { email: string, name: string } | null }>}
+ */
+export async function invalidateAndReauthorize() {
+  log('Triggering manual re-authorization / account switch...');
+  try {
+    const currentToken = await chrome.identity.getAuthToken({ interactive: false });
+    const token = typeof currentToken === 'object' ? currentToken.token : currentToken;
+    if (token) {
+      await clearAuthToken(token);
+    }
+  } catch {
+    // Ignore if silent token wasn't cached
+  }
+
+  const newToken = await getAuthToken(true);
+  const user = await getAuthorizedUser(newToken);
+  return { token: newToken, user };
+}
+
+/**
+ * Verifies that the OAuth token can access the specified Google Drive file.
+ * If 401, 403, or 404 is encountered (expired token or account mismatch),
+ * it evicts the stale cached token and prompts interactive re-authorization ONCE.
+ * 
+ * @param {string} token Current OAuth access token
+ * @param {string} fileId Target Google Drive file ID
+ * @param {boolean} [isRetry=false] Whether this is a retry attempt (prevents loops)
+ * @returns {Promise<{ metadata: { id: string, name: string, mimeType: string, parents?: string[] }, token: string }>}
+ */
+export async function verifyCurrentFileAccess(token, fileId, isRetry = false) {
+  log(`Verifying file access for ID: ${fileId} (isRetry: ${isRetry})`);
   const fields = 'id,name,mimeType,parents';
   const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=${encodeURIComponent(fields)}&supportsAllDrives=true`;
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-
-  if (response.status === 401) {
-    await clearAuthToken(token);
-    throw new Error('Google authorization expired. Please try again to refresh your session.');
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  } catch (netErr) {
+    log('Network error verifying file access:', netErr);
+    throw new Error('Could not connect to Google Drive. Please check your internet connection.');
   }
 
-  if (response.status === 403 || response.status === 404) {
+  // Handle Token Expiry (401) or Account Access Mismatch (403 / 404)
+  if (response.status === 401 || response.status === 403 || response.status === 404) {
+    if (!isRetry) {
+      log(`Access returned HTTP ${response.status}. Evicting cached token and prompting interactive authorization once...`);
+      await clearAuthToken(token);
+
+      let newToken;
+      try {
+        newToken = await getAuthToken(true);
+      } catch (authErr) {
+        log('Interactive re-authorization failed:', authErr);
+        throw new Error('Google authorization was not granted. Please sign in to authorize Drive PDF Saver.');
+      }
+
+      // Retry the access check exactly once with the fresh token
+      return await verifyCurrentFileAccess(newToken, fileId, true);
+    }
+
+    // If still fails on retry, halt safely with a helpful message identifying the authorized account
+    const userInfo = await getAuthorizedUser(token).catch(() => null);
+    const accountInfo = userInfo?.email ? ` (${userInfo.email})` : '';
+
+    if (response.status === 401) {
+      await clearAuthToken(token);
+      throw new Error('Google authorization expired or was revoked. Please click the extension icon to sign in again.');
+    }
+
+    log(`File access denied on retry (${response.status}) for account:`, userInfo?.email);
     throw new Error(
-      'Account mismatch / permission error: Your signed-in Chrome Google account does not have permission to access this file. ' +
-      'If you have multiple Google accounts, please ensure this file is shared with your Chrome profile account or switch to the corresponding Chrome profile.'
+      `The Google account currently authorized for Drive PDF Saver${accountInfo} cannot access this file. ` +
+      `Please switch to the Google account that owns or has permission to this file, or share the file with ${userInfo?.email || 'your authorized account'}.`
     );
   }
 
@@ -104,6 +182,6 @@ export async function verifyCurrentFileAccess(token, fileId) {
   }
 
   const metadata = await response.json();
-  log(`File access verified for: "${metadata.name}" (${metadata.mimeType})`);
-  return metadata;
+  log(`File access confirmed: "${metadata.name}" (${metadata.mimeType})`);
+  return { metadata, token };
 }

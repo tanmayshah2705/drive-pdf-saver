@@ -117,8 +117,11 @@ async function processExportPipeline(fileInfo, tabId = null) {
   const token = await getAuthToken(true);
 
   // Step 2: Verify account access and fetch authoritative file metadata from Drive API
+  // Automatically handles 401/403/404 with 1-retry interactive reauthorization
   showProgress(tabId, 'Verifying permissions and file details...', 'Checking Document');
-  const metadata = await verifyCurrentFileAccess(token, fileId);
+  const verified = await verifyCurrentFileAccess(token, fileId);
+  const metadata = verified.metadata;
+  const activeToken = verified.token || token;
 
   // Step 3: Verify that the file can be converted to PDF
   if (!isConvertible(metadata.mimeType, metadata.name)) {
@@ -126,7 +129,7 @@ async function processExportPipeline(fileInfo, tabId = null) {
     if (cat.category === 'pdf') {
       throw new Error('This file is already a PDF in this folder.');
     }
-    throw new Error(`This file type (${metadata.mimeType || 'unknown'}) cannot be converted to PDF.`);
+    throw new Error(`This file type (${metadata.mimeType || 'unknown'}) cannot be converted to PDF by Drive PDF Saver. Supported: Google Docs, Sheets, Slides, Drawings, Office files (Word, Excel, PowerPoint), text files, and images.`);
   }
 
   const fileName = metadata.name || 'Document';
@@ -135,7 +138,7 @@ async function processExportPipeline(fileInfo, tabId = null) {
 
   // Step 4: Export or convert to PDF Blob in-memory
   showProgress(tabId, `Exporting "${fileName}" to PDF in memory...`, `Exporting ${fileName}`);
-  const pdfBlob = await exportFileToPdf(token, fileId, metadata, (stage, msg) => {
+  const pdfBlob = await exportFileToPdf(activeToken, fileId, metadata, (stage, msg) => {
     showProgress(tabId, msg, stage);
   });
 
@@ -152,19 +155,19 @@ async function processExportPipeline(fileInfo, tabId = null) {
 
   // Step 6: Check for an existing PDF with the exact same name in that folder
   showProgress(tabId, `Checking for existing "${pdfName}" in folder...`, 'Checking Folder');
-  const existingPdf = await findExistingPdf(token, pdfName, parentFolderId);
+  const existingPdf = await findExistingPdf(activeToken, pdfName, parentFolderId);
 
   // Step 7: Update in-place if existing, or Upload new
   let isUpdate = false;
   if (existingPdf) {
     showProgress(tabId, `Updating existing "${pdfName}" in same folder...`, `Updating ${pdfName}`);
-    await updateExistingPdfContent(token, existingPdf.id, pdfBlob);
+    await updateExistingPdfContent(activeToken, existingPdf.id, pdfBlob);
     isUpdate = true;
     showSuccess(tabId, `✓ "${pdfName}" updated in the same folder.`, 'Drive PDF Saver');
     log(`Successfully updated existing PDF (ID: ${existingPdf.id}) in same folder.`);
   } else {
     showProgress(tabId, `Saving "${pdfName}" to same folder...`, `Uploading ${pdfName}`);
-    await uploadNewPdf(token, pdfBlob, pdfName, parentFolderId);
+    await uploadNewPdf(activeToken, pdfBlob, pdfName, parentFolderId);
     showSuccess(tabId, `✓ "${pdfName}" saved to the same folder.`, 'Drive PDF Saver');
     log(`Successfully created new PDF "${pdfName}" in same folder.`);
   }

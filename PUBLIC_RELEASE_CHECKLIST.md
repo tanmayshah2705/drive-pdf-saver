@@ -76,45 +76,33 @@ To allow **any Google user** to install and use the extension with their own Goo
 
 ## Phase 3: Chrome Web Store Developer Dashboard
 
-### 3.1 Register Developer Account
-- [ ] Go to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
-- [ ] Sign in with your Google account and pay the one-time $5 developer registration fee if you haven't already.
+## Phase 3: Google Cloud OAuth Client ID for GitHub Distribution
 
-### 3.2 Create the Extension Package (.zip)
-- [ ] Create a clean distribution `.zip` archive containing only the necessary extension files:
-  ```powershell
-  # Run from the project root:
-  Compress-Archive -Path manifest.json, background.js, content.js, icons, popup, services, utils -DestinationPath drive-pdf-saver-v1.0.0.zip -Force
-  ```
-  *(Do not include `.git`, `node_modules`, markdown documentation, or test scripts in the zip)*.
+Because the extension is distributed via GitHub (unpacked), it uses a **deterministic public key** in `manifest.json`. This guarantees that Chrome assigns the **exact same 32-character Extension ID** to every user on any computer worldwide:
 
-### 3.3 Create Draft Listing & Acquire Extension ID
-- [ ] In the Chrome Web Store Developer Dashboard, click **Add new item**.
-- [ ] Upload `drive-pdf-saver-v1.0.0.zip`.
-- [ ] Chrome Web Store will assign your item a permanent **Extension ID** (a 32-character lowercase string like `abcdefghijklmnopqrstuvwxyz123456`).
-- [ ] Note this Extension ID down.
+**Your Fixed Extension ID:**
+```
+aijdgafbjdkfalbceioihafdkepiikce
+```
 
-### 3.4 Link Extension ID in Google Cloud OAuth Credentials
-- [ ] Return to [Google Cloud Console](https://console.cloud.google.com/) ➔ **APIs & Services** ➔ **Credentials**.
+### 3.1 Create or Update OAuth Client ID in Google Cloud Console
+- [ ] In [Google Cloud Console](https://console.cloud.google.com/), go to **APIs & Services** ➔ **Credentials**.
 - [ ] Click **Create Credentials** ➔ **OAuth client ID**.
-- [ ] Application type: **Chrome app / extension**.
-- [ ] **Item ID**: Paste the 32-character Extension ID obtained from the Chrome Web Store dashboard.
+- [ ] Set **Application type**: `Chrome app / extension`.
+- [ ] Set **Name**: `Drive PDF Saver (GitHub Unpacked)`.
+- [ ] Set **Item ID**:
+  ```
+  aijdgafbjdkfalbceioihafdkepiikce
+  ```
 - [ ] Click **Create**.
 - [ ] Copy the generated Client ID (e.g. `48459272093-xxxxxxxx.apps.googleusercontent.com`).
-- [ ] If this Client ID differs from what is currently in `manifest.json`, update `manifest.json`:
-  ```json
-  "oauth2": {
-    "client_id": "YOUR_NEW_CLIENT_ID.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/drive"
-    ]
-  }
-  ```
-  *(Re-create the zip and upload the updated package if needed).*
+- [ ] Verify that `manifest.json` has this Client ID in the `oauth2.client_id` field.
+- [ ] Now, ANY user who clones or downloads this repository from GitHub and clicks "Load unpacked" will automatically use this OAuth client without needing their own Google Cloud project!
 
 ---
 
-## Phase 4: Complete the Store Listing & Submit
+## Phase 4: Optional Future Chrome Web Store Submission
+*(Optional: Only when you decide to publish to the Chrome Web Store in the future)*
 
 Open your draft item in the Chrome Web Store Developer Dashboard and fill out the sections using `STORE_LISTING.md`:
 

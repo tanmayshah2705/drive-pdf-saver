@@ -1,6 +1,5 @@
-// popup/popup.js
-
 import { extractGoogleFileInfo } from '../services/file.js';
+import { getAuthToken, getAuthorizedUser, invalidateAndReauthorize } from '../services/auth.js';
 
 const supportedView = document.getElementById('supported-view');
 const unsupportedView = document.getElementById('unsupported-view');
@@ -9,6 +8,8 @@ const fileTypeEl = document.getElementById('file-type');
 const statusBadge = document.getElementById('status-badge');
 const statusDetail = document.getElementById('status-detail');
 const saveBtn = document.getElementById('save-btn');
+const accountEmailEl = document.getElementById('account-email');
+const switchAccountBtn = document.getElementById('switch-account-btn');
 
 const SERVICE_NAMES = {
   docs: 'Google Docs',
@@ -23,6 +24,7 @@ let currentFileInfo = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   initPopup();
+  loadAccountInfo();
   setupEvents();
 });
 
@@ -117,4 +119,50 @@ function setupEvents() {
       setStatus('working', message.stage || 'Working', message.message || '');
     }
   });
+
+  // Switch / Re-authorize Google Account
+  if (switchAccountBtn) {
+    switchAccountBtn.addEventListener('click', async () => {
+      switchAccountBtn.disabled = true;
+      switchAccountBtn.textContent = 'Switching...';
+      setStatus('working', 'Authorizing', 'Prompting Google account selection...');
+
+      try {
+        const result = await invalidateAndReauthorize();
+        if (result.user?.email) {
+          accountEmailEl.textContent = result.user.email;
+          setStatus('ready', 'Ready', `Authorized as ${result.user.email}`);
+        } else {
+          accountEmailEl.textContent = 'Authorized';
+          setStatus('ready', 'Ready', 'Google account authorized.');
+        }
+      } catch (err) {
+        console.error('[DrivePDF Popup] Account switch error:', err);
+        setStatus('error', 'Auth Error', err.message || 'Failed to switch Google account.');
+      } finally {
+        switchAccountBtn.textContent = 'Switch';
+        switchAccountBtn.disabled = false;
+      }
+    });
+  }
 }
+
+async function loadAccountInfo() {
+  if (!accountEmailEl) return;
+  try {
+    const token = await getAuthToken(false).catch(() => null);
+    if (!token) {
+      accountEmailEl.textContent = 'Not yet authorized';
+      return;
+    }
+    const user = await getAuthorizedUser(token);
+    if (user?.email) {
+      accountEmailEl.textContent = user.email;
+    } else {
+      accountEmailEl.textContent = 'Authorized';
+    }
+  } catch {
+    accountEmailEl.textContent = 'Not authorized';
+  }
+}
+

@@ -8,6 +8,7 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAycseAamBvwTcPiBewrpIyxIKJuLzs3DnfP7gvd7e46ZCuugmazJdC6WUix9BpqBNNNQdY3MXVAmrRpdxXQvO1YT2USAIBAaUd2x34MRTNTF2WJQU2MDnSwZAlG7/d3QVGugOppjw9ktcdUdj9caJZyoIQ/2xiEZ07jYgjgHCwQV0g876vJEB3IayuAUacpLKSZ2tU+0WXdxUoXWr+OG9+4ux8AHpEnNgg3jtJPByOFlTMTmdrs9IECZ0Pm2uwEbUvHZSNN5aBDjFHzqfrU5W6u7ohigCqBOvaHdeZxrkbdWfP8cEsDHXKuqLesbbC71aMaLm/2gLheUM2hlcDGkczQIDAQAB",
   "background": {
     "service_worker": "background.js",
     "type": "module"

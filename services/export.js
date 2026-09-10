@@ -90,7 +90,7 @@ export async function exportFileToPdf(token, fileId, metadata, onProgress = () =
     return await convertImageToPdf(imageBlob);
   }
 
-  throw new Error(`This file type (${metadata.mimeType || 'unknown'}) cannot be converted to PDF.`);
+  throw new Error(`This file type (${metadata.mimeType || 'unknown'}) cannot be converted to PDF by Drive PDF Saver. Supported: Google Docs, Sheets, Slides, Drawings, Office files (Word, Excel, PowerPoint), text files, and images.`);
 }
 
 /**

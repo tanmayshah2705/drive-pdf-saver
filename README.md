@@ -97,67 +97,64 @@ drive-pdf-saver/
 
 ## 4. Local Development Setup
 
-### Prerequisites
-- Google Chrome browser.
-- A Google Cloud Project with the **Google Drive API** enabled.
+## 4. Installation for Any User (From GitHub)
 
-### Step 1: Clone the Repository
-```bash
-git clone https://github.com/tanmayshah2705/drive-pdf-saver.git
-cd drive-pdf-saver
+**No developer account or Google Cloud project is required for users.**
+
+1. **Download the Extension**:
+   - Clone the repo:
+     ```bash
+     git clone https://github.com/tanmayshah2705/drive-pdf-saver.git
+     ```
+   - *Or click "Code ➔ Download ZIP" on GitHub and extract the folder.*
+2. **Load into Chrome**:
+   - Open Chrome and navigate to `chrome://extensions`.
+   - Enable **Developer mode** (toggle in the top-right corner).
+   - Click **Load unpacked** and select the `drive-pdf-saver/` directory.
+3. **Use with Your Own Google Account**:
+   - Open any Google Doc, Sheet, Slide, Office file, or image in Google Drive.
+   - Right-click anywhere and select **"Save as PDF to Google Drive"** (or open the extension popup and click the blue button).
+   - Google will display an authorization prompt on first use asking you to authorize Drive PDF Saver.
+   - Approve access. The PDF will be saved directly into your own Google Drive folder!
+
+---
+
+## 5. Developer Google Cloud Configuration (One-Time Setup)
+
+Because `manifest.json` contains a deterministic public key (`"key"`), Chrome assigns the **exact same Extension ID** to every user who loads this extension unpacked:
+
+**Fixed Extension ID for all users:**
+```
+aijdgafbjdkfalbceioihafdkepiikce
 ```
 
-### Step 2: Load Extension in Chrome
-1. Open Chrome and navigate to `chrome://extensions`.
-2. Enable **Developer mode** (toggle in the top-right corner).
-3. Click **Load unpacked**.
-4. Select the `drive-pdf-saver/` directory.
-5. Note the **ID** assigned to the extension (e.g. `abcdefghijklmnopqrstuvwxyz123456`).
+To enable public users to authenticate using your Google Cloud OAuth application:
 
-### Step 3: Configure Google Cloud OAuth Client
-1. Open the [Google Cloud Console](https://console.cloud.google.com/).
-2. Enable the **Google Drive API** under **APIs & Services** ➔ **Library**.
-3. Go to **APIs & Services** ➔ **Credentials**.
-4. Click **Create Credentials** ➔ **OAuth client ID**.
-5. Select **Application type**: `Chrome app / extension`.
-6. Set **Item ID** to the Extension ID from Step 2.
-7. Copy the generated Client ID and ensure it matches the `oauth2.client_id` in `manifest.json`.
-8. Click the reload icon on `chrome://extensions` to reload the extension.
+1. **Google Drive API**: In [Google Cloud Console](https://console.cloud.google.com/), ensure **Google Drive API** is enabled under **APIs & Services ➔ Library**.
+2. **OAuth Consent Screen**:
+   - User Type: **External**.
+   - App Name: `Drive PDF Saver`.
+   - Scopes: `https://www.googleapis.com/auth/drive`.
+   - **Publishing Status**: Click **"PUBLISH APP"** to move it to **In production**. *(Moving to production allows any Google user to authorize without you having to manually add them as Test Users).*
+3. **Create OAuth Client ID**:
+   - Go to **APIs & Services ➔ Credentials ➔ Create Credentials ➔ OAuth client ID**.
+   - Application Type: **Chrome app / extension**.
+   - Item ID: `aijdgafbjdkfalbceioihafdkepiikce`.
+   - Copy the generated Client ID into `manifest.json` under `oauth2.client_id`.
 
 ---
 
-## 5. Chrome Web Store & Public Release
+## 6. Multi-Account Handling & Token Lifecycle
 
-To make Drive PDF Saver available to any Google user on the Chrome Web Store:
+Because users frequently have multiple Google accounts (personal, work, school) logged into Chrome, Drive PDF Saver implements a proactive access-verification and re-authorization lifecycle:
 
-1. **Host Public Documentation**:
-   - Push this repository to GitHub and enable **GitHub Pages** (Settings ➔ Pages ➔ Source: `main` branch, `/ (root)` folder).
-   - Your landing page and privacy policy will be live at: `https://tanmayshah2705.github.io/drive-pdf-saver/`.
-2. **Google Cloud Production Setup**:
-   - Move the OAuth Consent Screen to **Production** (Publish App).
-   - Submit for Google OAuth verification for the `https://www.googleapis.com/auth/drive` scope.
-3. **Chrome Web Store Submission**:
-   - Package the extension into a `.zip` archive:
-     ```powershell
-     Compress-Archive -Path manifest.json, background.js, content.js, icons, popup, services, utils -DestinationPath drive-pdf-saver-v1.0.0.zip
-     ```
-   - Upload the `.zip` to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
-   - Fill out store listing details using `STORE_LISTING.md`.
-   - Submit for review.
-
-> **Full detailed instructions with screenshots and demo video scripts are available in [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md).**
-
----
-
-## 6. Multi-Account Handling
-
-Because Google users often have multiple Google accounts (e.g., personal and work/school) open in the same browser session, Drive PDF Saver implements proactive account access verification:
-
-- `chrome.identity.getAuthToken()` authenticates with the Google account signed into the **active Chrome profile**.
-- Before attempting any conversion or upload, `verifyCurrentFileAccess()` calls Google Drive API to verify that the active OAuth token has read/write permissions for the document.
-- If the file is owned by or open in an account different from the Chrome profile, the extension displays a helpful in-page toast:
-  > *"Account mismatch / permission error: Your signed-in Chrome Google account does not have permission to access this file. If you have multiple Google accounts, please ensure this file is shared with your Chrome profile account or switch to the corresponding Chrome profile."*
-- This prevents confusing 400 or 403 errors and prevents accidental uploads to the wrong Drive account.
+1. **Automatic Account Verification**: Before converting or uploading, `verifyCurrentFileAccess()` calls Google Drive API to verify that the active token has permission to access the file.
+2. **Self-Healing on Account Mismatch**:
+   - If a 401, 403, or 404 is detected (e.g. Chrome profile is Account A, but document belongs to Account B), the extension automatically evicts the stale token from Chrome's cache and prompts interactive Google account authorization once.
+   - If the newly authorized account has access, the export finishes seamlessly.
+   - If access still fails, it stops safely with an informative error stating: *"The currently authorized Google account (user@example.com) cannot access this file. Please switch accounts or share the file."*
+   - **Guaranteed safety**: Zero files are ever written to the wrong Drive account.
+3. **Manual Account Switcher**: Open the extension popup at any time to see which Google account is currently authorized and click **"Switch"** to re-authorize with a different Google account on demand.
 
 ---
 
