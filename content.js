@@ -2,7 +2,7 @@
 
 /**
  * Extracts Google Drive or Workspace file ID and service type from URL.
- * @param {string} url 
+ * @param {string} url
  * @returns {{ fileId: string, service: string, url: string } | null}
  */
 function extractGoogleFileInfo(url) {
@@ -24,30 +24,136 @@ function extractGoogleFileInfo(url) {
   // Check /d/FILE_ID
   const dMatch = url.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
   if (dMatch && dMatch[1]) {
-    return {
-      fileId: dMatch[1],
-      service: service,
-      url: url
-    };
+    return { fileId: dMatch[1], service, url };
   }
 
   // Check ?id=FILE_ID or &id=FILE_ID
   const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
   if (idMatch && idMatch[1]) {
-    return {
-      fileId: idMatch[1],
-      service: service,
-      url: url
-    };
+    return { fileId: idMatch[1], service, url };
   }
 
   return null;
+}
+
+/**
+/**
+ * Extracts the active Google account's email from the current webpage DOM.
+ * Works across Google Docs, Sheets, Slides, Drawings, and Google Drive.
+ *
+ * Checks in order of reliability:
+ *   1. Elements with data-email attribute
+ *   2. The Google Bar (#gb) active profile button / aria-label
+ *   3. Document-wide elements with aria-label containing email
+ *   4. Inline script blocks containing embedded user email data
+ *
+ * @returns {string|null}
+ */
+function extractActiveAccountEmailFromDom() {
+  const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+
+  // 1. Check data-email attribute anywhere in DOM
+  const dataEl = document.querySelector('[data-email]');
+  if (dataEl) {
+    const email = dataEl.getAttribute('data-email');
+    if (email && email.includes('@')) return email.toLowerCase().trim();
+  }
+
+  // 2. Check Google Bar (#gb) active profile button (standard Google Suite header)
+  const gb = document.getElementById('gb');
+  if (gb) {
+    const buttons = gb.querySelectorAll('a[aria-label], button[aria-label], a[href*="SignOutOptions"]');
+    for (const btn of buttons) {
+      const label = btn.getAttribute('aria-label') || btn.getAttribute('title') || '';
+      const match = label.match(emailRegex);
+      if (match) return match[1].toLowerCase().trim();
+    }
+  }
+
+  // 3. Check any element with aria-label containing an email
+  const allAria = document.querySelectorAll('a[aria-label*="@"], button[aria-label*="@"], div[aria-label*="@"]');
+  for (const el of allAria) {
+    const label = el.getAttribute('aria-label') || '';
+    const match = label.match(emailRegex);
+    if (match) return match[1].toLowerCase().trim();
+  }
+
+  // 4. Check inline script initial data (Google Docs/Sheets/Slides embed user info)
+  const scriptRegex = /["'](?:email|user_email|userEmail)["']\s*:\s*["']([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})["']/;
+  for (const s of document.scripts) {
+    const text = s.textContent;
+    if (text && (text.includes('@gmail.com') || text.includes('user_email') || text.includes('userEmail') || text.includes('email'))) {
+      const match = text.match(scriptRegex);
+      if (match) return match[1].toLowerCase().trim();
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Detects which Google account is active for the current Drive/Docs tab.
+ *
+ * Uses:
+ *   - /u/N/ path segment (account index N in Google's session)
+ *   - authuser query param (index N or email)
+ *   - Live in-page DOM detection (active account in Google Bar / page context)
+ *
+ * @param {string} url
+ * @returns {{ userIndex: number|null, email: string|null }}
+ */
+function detectActiveAccountHint(url) {
+  let userIndex = null;
+  let email = null;
+
+  // 1. /u/N/ path segment
+  if (url) {
+    const uMatch = url.match(/\/u\/(\d+)\//);
+    if (uMatch) {
+      userIndex = parseInt(uMatch[1], 10);
+    }
+  }
+
+  // 2. authuser query param — may be a number or an email
+  if (url) {
+    try {
+      const parsed = new URL(url);
+      const authuser = parsed.searchParams.get('authuser');
+      if (authuser !== null) {
+        if (authuser.includes('@')) {
+          email = authuser.toLowerCase().trim();
+        } else {
+          const idx = parseInt(authuser, 10);
+          if (!isNaN(idx)) {
+            userIndex = idx;
+          }
+        }
+      }
+    } catch {
+      // Not a valid URL — ignore
+    }
+  }
+
+  // 3. Extract active email from DOM if not directly in URL
+  if (!email) {
+    email = extractActiveAccountEmailFromDom();
+  }
+
+  // In Google apps, omission of /u/N/ defaults to session account index 0
+  if (userIndex === null && url && (url.includes('docs.google.com') || url.includes('drive.google.com'))) {
+    userIndex = 0;
+  }
+
+  return { userIndex, email };
 }
 
 // Respond to background or popup inquiries
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'getFileInfo') {
     const fileInfo = extractGoogleFileInfo(window.location.href);
+    if (fileInfo) {
+      fileInfo.activeAccountHint = detectActiveAccountHint(window.location.href);
+    }
     sendResponse(fileInfo);
     return false;
   }

@@ -1,7 +1,8 @@
 // background.js — Service Worker (ES Module)
 // Orchestrates PDF export and conversion directly via official Google Drive API v3.
 
-import { getAuthToken, verifyCurrentFileAccess } from './services/auth.js';
+import { resolveTokenForTab, verifyCurrentFileAccess } from './services/auth.js';
+import { connectAccount, disconnectAccount } from './services/accounts.js';
 import { findExistingPdf, uploadNewPdf, updateExistingPdfContent } from './services/drive.js';
 import { exportFileToPdf } from './services/export.js';
 import { extractGoogleFileInfo, isConvertible, generatePdfName, getConversionCategory } from './services/file.js';
@@ -58,6 +59,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     return true; // Keep message channel open for async response
   }
+
+  if (message.action === 'connectAccount') {
+    log('Connect account requested from popup');
+    connectAccount(message.loginHint)
+      .then((account) => sendResponse({ success: true, account }))
+      .catch((err) => {
+        log('connectAccount failed:', err);
+        sendResponse({ success: false, error: (err && err.message) ? err.message : String(err) });
+      });
+
+    return true; // Keep message channel open for async response
+  }
+
+  if (message.action === 'disconnectAccount') {
+    log('Disconnect account requested for:', message.email);
+    disconnectAccount(message.email)
+      .then(() => sendResponse({ success: true }))
+      .catch((err) => {
+        log('disconnectAccount failed:', err);
+        sendResponse({ success: false, error: (err && err.message) ? err.message : String(err) });
+      });
+
+    return true; // Keep message channel open for async response
+  }
 });
 
 // ============================================================================
@@ -67,16 +92,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleContextMenuAction(tab, pageUrl) {
   const tabId = tab?.id;
   try {
-    let fileInfo = null;
-
-    // First attempt to extract from tab URL or context menu pageUrl
     const url = tab?.url || pageUrl;
-    fileInfo = extractGoogleFileInfo(url);
+    let fileInfo = extractGoogleFileInfo(url) || {};
 
-    // If not directly parsed, query content script in the active tab
-    if (!fileInfo && tabId) {
+    // Attach account hint from URL as baseline
+    if (url) {
+      fileInfo.activeAccountHint = detectAccountHintFromUrl(url);
+    }
+
+    // Always query content script in the active tab for the live in-page active account
+    if (tabId) {
       try {
-        fileInfo = await chrome.tabs.sendMessage(tabId, { action: 'getFileInfo' });
+        const tabInfo = await chrome.tabs.sendMessage(tabId, { action: 'getFileInfo' });
+        if (tabInfo) {
+          fileInfo = {
+            ...fileInfo,
+            ...tabInfo,
+            activeAccountHint: {
+              ...(fileInfo.activeAccountHint || {}),
+              ...(tabInfo.activeAccountHint || {})
+            }
+          };
+        }
       } catch (scriptErr) {
         log('Content script query failed:', scriptErr);
       }
@@ -94,13 +131,48 @@ async function handleContextMenuAction(tab, pageUrl) {
   }
 }
 
+/**
+ * Extracts an account hint from a Google URL (mirrors content.js logic, for cases
+ * where the content script is not available, e.g. Drive file preview pages).
+ * @param {string} url
+ * @returns {{ userIndex: number|null, email: string|null }}
+ */
+function detectAccountHintFromUrl(url) {
+  if (!url) return { userIndex: null, email: null };
+  let userIndex = null;
+  let email = null;
+
+  const uMatch = url.match(/\/u\/(\d+)\//);
+  if (uMatch) userIndex = parseInt(uMatch[1], 10);
+
+  try {
+    const parsed = new URL(url);
+    const authuser = parsed.searchParams.get('authuser');
+    if (authuser !== null) {
+      if (authuser.includes('@')) {
+        email = authuser.toLowerCase().trim();
+      } else {
+        const idx = parseInt(authuser, 10);
+        if (!isNaN(idx)) userIndex = idx;
+      }
+    }
+  } catch { /* ignore */ }
+
+  if (userIndex === null && url && (url.includes('docs.google.com') || url.includes('drive.google.com'))) {
+    userIndex = 0;
+  }
+
+  return { userIndex, email };
+}
+
+
 // ============================================================================
 // 3. Core Export Pipeline (Google Drive API)
 // ============================================================================
 
 /**
  * Executes the universal Google Drive PDF export/conversion pipeline.
- * @param {{ fileId: string, service?: string }} fileInfo 
+ * @param {{ fileId: string, service?: string, activeAccountHint?: {userIndex:number|null, email:string|null} }} fileInfo
  * @param {number|null} [tabId] Target browser tab ID for in-page status toasts
  * @returns {Promise<{ pdfName: string, isUpdate: boolean }>}
  */
@@ -110,14 +182,37 @@ async function processExportPipeline(fileInfo, tabId = null) {
   }
 
   const { fileId } = fileInfo;
-  log(`Starting export pipeline for file ID: ${fileId}, tab: ${tabId}`);
+  let activeAccountHint = fileInfo.activeAccountHint || {};
 
-  // Step 1: Obtain Google OAuth token (cached silent-first, interactive fallback)
+  // If activeAccountHint has no email, query content script in the active tab
+  if (!activeAccountHint.email && tabId) {
+    try {
+      const tabInfo = await chrome.tabs.sendMessage(tabId, { action: 'getFileInfo' });
+      if (tabInfo && tabInfo.activeAccountHint) {
+        activeAccountHint = {
+          ...activeAccountHint,
+          ...tabInfo.activeAccountHint
+        };
+      }
+    } catch (tabErr) {
+      log('Could not query active tab for account hint:', tabErr);
+    }
+  }
+
+  // Fallback to URL detection if needed
+  if (!activeAccountHint.email && fileInfo.url) {
+    const urlHint = detectAccountHintFromUrl(fileInfo.url);
+    activeAccountHint = { ...urlHint, ...activeAccountHint };
+  }
+
+  log(`Starting export pipeline for file ID: ${fileId}, tab: ${tabId}, accountHint:`, activeAccountHint);
+
+  // Step 1: Resolve which connected Google account token to use for this tab
   showProgress(tabId, 'Connecting to Google Drive...', 'Drive PDF Saver');
-  const token = await getAuthToken(true);
+  const { token, email } = await resolveTokenForTab(activeAccountHint);
+  log(`Using token for account: ${email}`);
 
   // Step 2: Verify account access and fetch authoritative file metadata from Drive API
-  // Automatically handles 401/403/404 with 1-retry interactive reauthorization
   showProgress(tabId, 'Verifying permissions and file details...', 'Checking Document');
   const verified = await verifyCurrentFileAccess(token, fileId);
   const metadata = verified.metadata;
@@ -174,3 +269,4 @@ async function processExportPipeline(fileInfo, tabId = null) {
 
   return { pdfName, isUpdate };
 }
+

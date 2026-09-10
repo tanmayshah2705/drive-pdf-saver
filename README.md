@@ -67,17 +67,14 @@ A production-ready Google Chrome Extension that converts any active Google Doc, 
 
 ```
 drive-pdf-saver/
-├── manifest.json            # Manifest V3 (minimal permissions: identity, contextMenus, activeTab)
+├── manifest.json            # Manifest V3 (deterministic key, identity, contextMenus, activeTab)
 ├── background.js            # Central service worker (ES module) coordinating the export pipeline
 ├── content.js               # Tab URL detector & Shadow DOM in-page toast notification system
-├── index.html               # Public landing page & Privacy Policy for GitHub Pages hosting
-├── PRIVACY_POLICY.md        # Official Privacy Policy document compliant with Google User Data Policy
-├── STORE_LISTING.md         # Chrome Web Store listing metadata, copy, and permission justifications
-├── PUBLIC_RELEASE_CHECKLIST.md # Step-by-step production rollout guide (Google Cloud + Chrome Web Store)
+├── PRIVACY_POLICY.md        # Open-source privacy policy document
 │
 ├── popup/                   # Extension toolbar popup interface
-│   ├── popup.html           # Document detection, status badge, and "Save as PDF to Google Drive" button
-│   ├── popup.js             # Real-time state management and message passing
+│   ├── popup.html           # Document detection, account info, and "Save as PDF to Google Drive" button
+│   ├── popup.js             # Real-time state management, account switcher, and message passing
 │   └── popup.css            # Clean Google Material 3 styling
 │
 ├── services/                # Modular service layer
@@ -95,11 +92,7 @@ drive-pdf-saver/
 
 ---
 
-## 4. Local Development Setup
-
-## 4. Installation for Any User (From GitHub)
-
-**No developer account or Google Cloud project is required for users.**
+## 4. Installation for Test Users (From GitHub)
 
 1. **Download the Extension**:
    - Clone the repo:
@@ -111,7 +104,7 @@ drive-pdf-saver/
    - Open Chrome and navigate to `chrome://extensions`.
    - Enable **Developer mode** (toggle in the top-right corner).
    - Click **Load unpacked** and select the `drive-pdf-saver/` directory.
-3. **Use with Your Own Google Account**:
+3. **Use with Your Google Account**:
    - Open any Google Doc, Sheet, Slide, Office file, or image in Google Drive.
    - Right-click anywhere and select **"Save as PDF to Google Drive"** (or open the extension popup and click the blue button).
    - Google will display an authorization prompt on first use asking you to authorize Drive PDF Saver.
@@ -119,7 +112,7 @@ drive-pdf-saver/
 
 ---
 
-## 5. Developer Google Cloud Configuration (One-Time Setup)
+## 5. Google Cloud Configuration (Testing Mode)
 
 Because `manifest.json` contains a deterministic public key (`"key"`), Chrome assigns the **exact same Extension ID** to every user who loads this extension unpacked:
 
@@ -128,19 +121,19 @@ Because `manifest.json` contains a deterministic public key (`"key"`), Chrome as
 aijdgafbjdkfalbceioihafdkepiikce
 ```
 
-To enable public users to authenticate using your Google Cloud OAuth application:
+The extension operates in Google Cloud **Testing** mode (zero cost, no app verification, no custom domain):
 
 1. **Google Drive API**: In [Google Cloud Console](https://console.cloud.google.com/), ensure **Google Drive API** is enabled under **APIs & Services ➔ Library**.
 2. **OAuth Consent Screen**:
    - User Type: **External**.
    - App Name: `Drive PDF Saver`.
+   - Publishing Status: **Testing** *(Leave in Testing mode — do NOT publish to production!)*.
    - Scopes: `https://www.googleapis.com/auth/drive`.
-   - **Publishing Status**: Click **"PUBLISH APP"** to move it to **In production**. *(Moving to production allows any Google user to authorize without you having to manually add them as Test Users).*
-3. **Create OAuth Client ID**:
-   - Go to **APIs & Services ➔ Credentials ➔ Create Credentials ➔ OAuth client ID**.
-   - Application Type: **Chrome app / extension**.
+   - **Test Users**: Add your Google account and any test user accounts (supports up to 100 test accounts). Only accounts listed here can authorize the extension.
+3. **OAuth 2.0 Client ID**:
+   - In **APIs & Services ➔ Credentials**, ensure the OAuth client ID is of type **Chrome app / extension**.
    - Item ID: `aijdgafbjdkfalbceioihafdkepiikce`.
-   - Copy the generated Client ID into `manifest.json` under `oauth2.client_id`.
+   - Client ID: `48459272093-tmv1556u1hblmk7i6hga8urufap8linh.apps.googleusercontent.com` (configured in `manifest.json`).
 
 ---
 

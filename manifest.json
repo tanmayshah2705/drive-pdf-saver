@@ -8,7 +8,6 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAycseAamBvwTcPiBewrpIyxIKJuLzs3DnfP7gvd7e46ZCuugmazJdC6WUix9BpqBNNNQdY3MXVAmrRpdxXQvO1YT2USAIBAaUd2x34MRTNTF2WJQU2MDnSwZAlG7/d3QVGugOppjw9ktcdUdj9caJZyoIQ/2xiEZ07jYgjgHCwQV0g876vJEB3IayuAUacpLKSZ2tU+0WXdxUoXWr+OG9+4ux8AHpEnNgg3jtJPByOFlTMTmdrs9IECZ0Pm2uwEbUvHZSNN5aBDjFHzqfrU5W6u7ohigCqBOvaHdeZxrkbdWfP8cEsDHXKuqLesbbC71aMaLm/2gLheUM2hlcDGkczQIDAQAB",
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -16,15 +15,18 @@
   "permissions": [
     "identity",
     "contextMenus",
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "host_permissions": [
     "https://docs.google.com/*",
     "https://drive.google.com/*",
-    "https://www.googleapis.com/*"
+    "https://www.googleapis.com/*",
+    "https://oauth2.googleapis.com/*",
+    "https://accounts.google.com/*"
   ],
   "oauth2": {
-    "client_id": "48459272093-tmv1556u1hblmk7i6hga8urufap8linh.apps.googleusercontent.com",
+    "client_id": "48459272093-0kkpphs9kh70jbd3vnvl33l5qb8okdmi.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/drive"
     ]
@@ -36,8 +38,7 @@
         "https://docs.google.com/spreadsheets/*",
         "https://docs.google.com/presentation/*",
         "https://docs.google.com/drawings/*",
-        "https://drive.google.com/file/*",
-        "https://drive.google.com/open*"
+        "https://drive.google.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"
