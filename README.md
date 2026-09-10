@@ -2,7 +2,17 @@
 
 A Chrome Extension (Manifest V3) that converts any active Google Doc, Sheet, Slide, Office file, or image to PDF and saves it directly into the **same Google Drive folder** as the original — in one right-click.
 
-> **Distribution:** This extension is not on the Chrome Web Store. Download the release ZIP from GitHub and load it unpacked in Developer mode. See [Installation](#installation).
+## ⬇️ Download
+
+**[⬇️ Download Drive PDF Saver v1.0.0](https://github.com/tanmayshah2705/drive-pdf-saver/releases/download/v1.0.0/Drive-PDF-Saver-v1.0.0.zip)**
+
+> Direct link to the ready-to-use extension ZIP — extract and load unpacked in Chrome. See [Installation](#installation) for step-by-step instructions.
+>
+> 🌐 **[Landing Page](https://tanmayshah2705.github.io/drive-pdf-saver/)** &nbsp;·&nbsp; 📦 **[All Releases](https://github.com/tanmayshah2705/drive-pdf-saver/releases)** &nbsp;·&nbsp; 📄 **[Release Notes v1.0.0](https://github.com/tanmayshah2705/drive-pdf-saver/releases/tag/v1.0.0)**
+
+---
+
+> **Distribution:** This extension is not on the Chrome Web Store. Download the release ZIP from GitHub and load it unpacked in Developer mode.
 
 ---
 
@@ -129,8 +139,8 @@ Active Google Drive / Docs Tab
 ### Steps
 
 1. **Download the latest ZIP** from the [GitHub Releases page](https://github.com/tanmayshah2705/drive-pdf-saver/releases/latest):
-   - Click **`drive-pdf-saver-v1.0.0.zip`** under *Assets*.
-   - Do **not** use the auto-generated *Source code* ZIP — it won't work without the compiled structure.
+   - Click **[⬇️ Download Drive PDF Saver v1.0.0](https://github.com/tanmayshah2705/drive-pdf-saver/releases/download/v1.0.0/Drive-PDF-Saver-v1.0.0.zip)** or grab **`Drive-PDF-Saver-v1.0.0.zip`** under *Assets* on the release page.
+   - Do **not** use the auto-generated *Source code* ZIP — it contains development tools and won't load as a clean extension.
 
 2. **Extract the ZIP** to a permanent folder on your computer:
    - Windows: `C:\Extensions\drive-pdf-saver\`

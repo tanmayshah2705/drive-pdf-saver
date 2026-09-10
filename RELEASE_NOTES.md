@@ -81,9 +81,12 @@ Re-exporting a file that already has a PDF with the same name in the same folder
 
 | File | Description |
 |---|---|
-| `drive-pdf-saver-v1.0.0.zip` | **Extension package** — extract and load unpacked. Contains only runtime files. |
+| `Drive-PDF-Saver-v1.0.0.zip` | **Extension package** — extract and load unpacked. Contains only runtime files (18 files, ~33 KB). |
 
-> The auto-generated *Source code* ZIP from GitHub contains the full repository including `.git`, test scripts, and development tools. **Use the asset ZIP above**, not the source ZIP, for loading the extension.
+**Direct download:**
+`https://github.com/tanmayshah2705/drive-pdf-saver/releases/download/v1.0.0/Drive-PDF-Saver-v1.0.0.zip`
+
+> The auto-generated *Source code* ZIP from GitHub contains the full repository including `.git`, test scripts, and development tools. **Use the asset ZIP above**, not the source ZIP.
 
 ---
 
