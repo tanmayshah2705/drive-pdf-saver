@@ -79,6 +79,7 @@ function setupEvents() {
     if (!currentTab || !currentFileInfo) return;
 
     saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving to Drive...';
     setStatus('working', 'Exporting...', 'Initiating PDF export from Google Drive API...');
 
     try {
@@ -91,21 +92,21 @@ function setupEvents() {
       if (response && response.success) {
         const actionWord = response.isUpdate ? 'updated' : 'saved';
         setStatus('success', 'Saved', `✓ ${response.pdfName} ${actionWord} in the same folder.`);
-        saveBtn.textContent = '✓ Saved to Drive';
+        saveBtn.textContent = '✓ Saved to Google Drive';
         setTimeout(() => {
-          saveBtn.textContent = 'Save as PDF';
+          saveBtn.textContent = 'Save as PDF to Google Drive';
           saveBtn.disabled = false;
-        }, 3000);
+        }, 3500);
       } else {
         const errorMsg = response?.error || 'An unexpected error occurred.';
         setStatus('error', 'Error', errorMsg);
-        saveBtn.textContent = 'Save as PDF';
+        saveBtn.textContent = 'Save as PDF to Google Drive';
         saveBtn.disabled = false;
       }
     } catch (err) {
       console.error('[DrivePDF Popup] Save error:', err);
       setStatus('error', 'Error', err.message || 'Communication error.');
-      saveBtn.textContent = 'Save as PDF';
+      saveBtn.textContent = 'Save as PDF to Google Drive';
       saveBtn.disabled = false;
     }
   });

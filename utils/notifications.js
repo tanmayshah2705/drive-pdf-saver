@@ -1,38 +1,62 @@
 // utils/notifications.js
+// Dispatches in-page toast messages to tabs and broadcasts status to popup UI.
+// Does NOT use OS/Windows desktop notifications.
 
 import { log } from './helpers.js';
 
-const NOTIFICATION_ICON = 'icons/icon128.png';
-
 /**
- * Creates or updates a Chrome notification.
+ * Sends an in-page toast notification to the specified tab (or active tab).
+ * @param {number|null} tabId Tab ID to send toast to, or null for active tab
+ * @param {'progress'|'success'|'error'} type 
  * @param {string} title 
  * @param {string} message 
- * @param {boolean} isError 
  */
-export function showNotification(title, message, isError = false) {
-  log(isError ? 'NOTIFICATION ERROR:' : 'NOTIFICATION:', title, '-', message);
+export async function showTabToast(tabId, type, title, message) {
+  log(`[Toast ${type.toUpperCase()}]`, title, '-', message);
+
   try {
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: NOTIFICATION_ICON,
-      title: title,
-      message: message,
-      priority: isError ? 2 : 1
-    });
+    let targetTabId = tabId;
+    if (!targetTabId) {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      targetTabId = activeTab?.id;
+    }
+
+    if (targetTabId) {
+      await chrome.tabs.sendMessage(targetTabId, {
+        action: 'showToast',
+        type,
+        title,
+        message
+      }).catch(() => {
+        // Tab might not have content script ready; safe to ignore
+      });
+    }
   } catch (err) {
-    log('Failed to show notification:', err);
+    log('Failed to dispatch toast to tab:', err);
+  }
+
+  // Also broadcast to popup if open
+  try {
+    chrome.runtime.sendMessage({
+      action: 'exportProgress',
+      stage: type === 'progress' ? 'Working' : (type === 'success' ? 'Saved' : 'Error'),
+      message: message || title
+    }).catch(() => {
+      // Harmless if popup is not open
+    });
+  } catch {
+    // Harmless
   }
 }
 
-export function showProgress(message) {
-  showNotification('Save as PDF to Google Drive', message, false);
+export function showProgress(tabId, message, title = 'Drive PDF Saver') {
+  return showTabToast(tabId, 'progress', title, message);
 }
 
-export function showSuccess(message) {
-  showNotification('✓ PDF Saved', message, false);
+export function showSuccess(tabId, message, title = '✓ PDF Saved to Drive') {
+  return showTabToast(tabId, 'success', title, message);
 }
 
-export function showError(message) {
-  showNotification('PDF Save Failed', message, true);
+export function showError(tabId, message, title = 'Save as PDF Failed') {
+  return showTabToast(tabId, 'error', title, message);
 }

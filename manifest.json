@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Save as PDF to Google Drive",
+  "name": "Drive PDF Saver",
   "version": "1.0.0",
-  "description": "Right-click on any Google Doc, Sheet, Slide, Office file, text document, or image in Google Drive to save it as PDF directly into the same folder.",
+  "description": "Save any Google Doc, Sheet, Slide, Office file, or image directly as a PDF into the same Google Drive folder with one click.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -15,9 +15,7 @@
   "permissions": [
     "identity",
     "contextMenus",
-    "activeTab",
-    "notifications",
-    "storage"
+    "activeTab"
   ],
   "host_permissions": [
     "https://docs.google.com/*",

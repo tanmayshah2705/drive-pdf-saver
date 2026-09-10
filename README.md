@@ -1,218 +1,184 @@
-# Save as PDF to Google Drive (Chrome Extension - Manifest V3)
+# Drive PDF Saver (Chrome Extension — Manifest V3)
 
-A fast, lightweight Chrome Extension that converts your active Google Doc, Sheet, or Slide to PDF and saves it directly into the **exact same Google Drive folder** using official Google Drive v3 APIs.
+A production-ready Google Chrome Extension that converts any active Google Doc, Sheet, Slide, Office file, or image to a PDF and saves it directly into the **exact same Google Drive folder** using official Google APIs.
 
-No downloading to disk. No manual uploading. No folder picking. Zero UI automation.
-
----
-
-## How It Works
-
-```
-   Google Workspace Tab (Doc / Sheet / Slide)
-                       │
-             [Right-Click Anywhere]
-                       │
-        "Save as PDF to Google Drive"
-                       │
-                       ▼
-            Background Service Worker
-                       │
-            1. Silent-First OAuth (chrome.identity)
-                       │
-            2. Authoritative Metadata (files.get)
-               - Fetch document name & parent folder ID
-               - Verify exportable Workspace MIME type
-                       │
-            3. Pure In-Memory Export (files.export)
-               - Export directly to binary PDF Blob
-                       │
-            4. Same-Folder Check (files.list)
-               - Check if [DocName].pdf already exists
-                       │
-           ┌───────────┴───────────┐
-           ▼                       ▼
-    [Already Exists]         [New File]
-    Update content in-place  Upload new PDF
-    (PATCH uploadType=media) (POST uploadType=multipart)
-           └───────────┬───────────┘
-                       ▼
-          Chrome Status Notification
-      "✓ Resume.pdf saved to Google Drive"
-```
+- **One-Click Simplicity**: Right-click anywhere and select **"Save as PDF to Google Drive"**, or click the blue button in the extension popup.
+- **Same-Folder Guarantee**: Automatically detects the original file's parent folder and saves the PDF right alongside it.
+- **In-Place Updates**: If a PDF with the same name already exists in that folder, it updates in-place without creating duplicates (e.g. `File (1).pdf`).
+- **In-Page Feedback**: Displays sleek in-page status toasts directly in your browser tab—no distracting Windows/OS desktop notifications.
+- **100% Client-Side & Private**: Direct browser-to-Google communication via official APIs. No intermediary servers, databases, or tracking.
 
 ---
 
-## Project Structure
+## 1. How It Works
+
+```
+                     Active Document / File in Browser Tab
+                                       │
+                     [Right-Click] ➔ "Save as PDF to Google Drive"
+                       (or Click button in Extension Popup)
+                                       │
+                                       ▼
+                         Background Service Worker
+                                       │
+                      1. Silent-First OAuth (chrome.identity)
+                         - Acquires access token for user's Google Drive
+                                       │
+                      2. Access Verification (verifyCurrentFileAccess)
+                         - Confirms current account has permission to file
+                         - Catches multi-account mismatches before export
+                                       │
+                      3. Authoritative Metadata (files.get)
+                         - Identifies file type, original name, and parent folder ID
+                                       │
+                      4. In-Memory PDF Conversion
+                         ├─ Google Workspace: Drive API files.export
+                         ├─ Office/Text files: Drive cloud conversion via temp copy
+                         └─ Images: In-memory OffscreenCanvas & DCTDecode PDF wrapper
+                                       │
+                      5. Same-Folder Check (files.list)
+                         - Queries parent folder for existing [Name].pdf
+                                       │
+                      ┌────────────────┴────────────────┐
+                      ▼                                 ▼
+               [Already Exists]                   [New File]
+             Update content in-place             Upload new PDF
+            (PATCH uploadType=media)       (POST uploadType=multipart)
+                      └────────────────┬────────────────┘
+                                       ▼
+                          In-Page Shadow DOM Toast
+                 "✓ Document.pdf saved to the same folder."
+```
+
+---
+
+## 2. Supported File Formats
+
+| Category | File Types & Extensions | Conversion Strategy |
+|---|---|---|
+| **Google Workspace** | Google Docs, Sheets, Slides, Drawings | Direct official Google Drive API `files.export` (`mimeType=application/pdf`) |
+| **Microsoft Office** | Word (`.docx`, `.doc`), Excel (`.xlsx`, `.xls`), PowerPoint (`.pptx`, `.ppt`) | Official Google Drive cloud conversion via temporary Workspace copy (auto-deleted) |
+| **Text & Open Formats** | `.txt`, `.rtf`, `.odt`, `.ods`, `.odp`, `.csv`, `.tsv`, `.html` | Official Google Drive cloud conversion via temporary Workspace copy (auto-deleted) |
+| **Images** | `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.bmp` | High-performance in-memory rasterization & standard PDF 1.4 stream embedding |
+
+---
+
+## 3. Project Architecture
 
 ```
 drive-pdf-saver/
-├── manifest.json            # Manifest V3 configuration (ES module service worker)
-├── background.js            # Service worker orchestrating the Drive API pipeline
-├── content.js               # Lightweight tab URL detector (zero DOM scraping)
+├── manifest.json            # Manifest V3 (minimal permissions: identity, contextMenus, activeTab)
+├── background.js            # Central service worker (ES module) coordinating the export pipeline
+├── content.js               # Tab URL detector & Shadow DOM in-page toast notification system
+├── index.html               # Public landing page & Privacy Policy for GitHub Pages hosting
+├── PRIVACY_POLICY.md        # Official Privacy Policy document compliant with Google User Data Policy
+├── STORE_LISTING.md         # Chrome Web Store listing metadata, copy, and permission justifications
+├── PUBLIC_RELEASE_CHECKLIST.md # Step-by-step production rollout guide (Google Cloud + Chrome Web Store)
 │
-├── popup/
-│   ├── popup.html           # Extension action popup
-│   ├── popup.js             # Real-time status and export action
-│   └── popup.css            # Google Material styled popup
+├── popup/                   # Extension toolbar popup interface
+│   ├── popup.html           # Document detection, status badge, and "Save as PDF to Google Drive" button
+│   ├── popup.js             # Real-time state management and message passing
+│   └── popup.css            # Clean Google Material 3 styling
 │
-├── services/
-│   ├── auth.js              # Token management with silent caching & interactive fallback
-│   ├── drive.js             # Drive API v3 (metadata, search, multipart upload, in-place update)
-│   ├── export.js            # files.export to in-memory PDF Blob
-│   └── file.js              # URL parsing, MIME type verification, filename generator
+├── services/                # Modular service layer
+│   ├── auth.js              # Token acquisition, cache invalidation, and verifyCurrentFileAccess()
+│   ├── drive.js             # Google Drive API v3: metadata, folder search, multipart upload, patch
+│   ├── export.js            # Universal export router (Workspace export, Office import, Image wrapper)
+│   └── file.js              # MIME type classification, URL parsing, and filename sanitization
 │
-├── utils/
-│   ├── notifications.js     # User notification manager
-│   └── helpers.js           # Logger and Drive query sanitization
+├── utils/                   # Shared utilities
+│   ├── helpers.js           # Logger and Drive query string escaping (sanitizeDriveQuery)
+│   └── notifications.js     # Dispatcher for in-page toasts and popup status broadcasts
 │
-├── icons/
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-│
-└── README.md
+└── icons/                   # Extension icons (16px, 48px, 128px)
 ```
 
 ---
 
-## Setup Instructions
+## 4. Local Development Setup
 
-### 1. Create a Google Cloud Project
-1. Open the [Google Cloud Console](https://console.cloud.google.com/).
-2. Click the project selector dropdown at the top and select **New Project**.
-3. Name your project (e.g., `Drive PDF Saver`) and click **Create**.
-4. Select the newly created project.
+### Prerequisites
+- Google Chrome browser.
+- A Google Cloud Project with the **Google Drive API** enabled.
 
-### 2. Enable Google Drive API
-1. In the left navigation menu, go to **APIs & Services → Library**.
-2. Search for **Google Drive API**.
-3. Click on **Google Drive API** and click the **Enable** button.
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/tanmayshah2705/drive-pdf-saver.git
+cd drive-pdf-saver
+```
 
-### 3. Configure OAuth Consent Screen
-1. Go to **APIs & Services → OAuth consent screen**.
-2. Select **External** (or **Internal** if using a Google Workspace organization) and click **Create**.
-3. Fill in the required fields:
-   - **App name**: `Save as PDF to Google Drive`
-   - **User support email**: Select your email.
-   - **Developer contact information**: Enter your email.
-4. Click **Save and Continue**.
-5. Under **Scopes**:
-   - Click **Add or Remove Scopes**.
-   - Select or enter: `https://www.googleapis.com/auth/drive`.
-   - Click **Update** and then **Save and Continue**.
-6. Under **Test users** (**Important!**):
-   - Click **Add Users**.
-   - Enter your personal Google email address (the one you will use to test the extension).
-   - Click **Save and Continue**.
-
-> **Note on App Verification:** Because this is for personal/local use and the OAuth consent screen is in **Testing** mode, you do **NOT** need to submit the app for Google's public verification. Only authorized test users can log in.
-
-### 4. Load the Extension to Get your Extension ID
-1. Open Google Chrome and navigate to `chrome://extensions`.
-2. Toggle on **Developer mode** in the top-right corner.
+### Step 2: Load Extension in Chrome
+1. Open Chrome and navigate to `chrome://extensions`.
+2. Enable **Developer mode** (toggle in the top-right corner).
 3. Click **Load unpacked**.
-4. Select the `drive-pdf-saver` directory from your computer.
-5. Locate the newly loaded extension and copy its **32-character ID** (e.g. `abcdefghijklmnopqrstuvwxyzabcdef`).
+4. Select the `drive-pdf-saver/` directory.
+5. Note the **ID** assigned to the extension (e.g. `abcdefghijklmnopqrstuvwxyz123456`).
 
-### 5. Create an OAuth 2.0 Client ID
-1. In Google Cloud Console, navigate to **APIs & Services → Credentials**.
-2. Click **Create Credentials** → **OAuth client ID**.
-3. In the **Application type** dropdown, select **Chrome extension**.
-4. In the **Item ID** field, paste your 32-character Extension ID from step 4.
-5. Give the client a name (e.g. `Chrome Extension Client`) and click **Create**.
-6. Copy the generated **Client ID** (e.g. `1234567890-xxx.apps.googleusercontent.com`).
-
-### 6. Add Client ID to `manifest.json`
-1. Open [`manifest.json`](file:///c:/Users/shahv/OneDrive/Desktop/pdf_Extension_App/drive-pdf-saver/manifest.json).
-2. Replace `YOUR_CLIENT_ID_HERE.apps.googleusercontent.com` with your actual Client ID:
-   ```json
-   "oauth2": {
-     "client_id": "1234567890-xxx.apps.googleusercontent.com",
-     "scopes": [
-       "https://www.googleapis.com/auth/drive"
-     ]
-   }
-   ```
-3. Save `manifest.json`.
-4. Return to `chrome://extensions` and click the **Reload (🔄)** icon on the extension card.
+### Step 3: Configure Google Cloud OAuth Client
+1. Open the [Google Cloud Console](https://console.cloud.google.com/).
+2. Enable the **Google Drive API** under **APIs & Services** ➔ **Library**.
+3. Go to **APIs & Services** ➔ **Credentials**.
+4. Click **Create Credentials** ➔ **OAuth client ID**.
+5. Select **Application type**: `Chrome app / extension`.
+6. Set **Item ID** to the Extension ID from Step 2.
+7. Copy the generated Client ID and ensure it matches the `oauth2.client_id` in `manifest.json`.
+8. Click the reload icon on `chrome://extensions` to reload the extension.
 
 ---
 
-## Usage
+## 5. Chrome Web Store & Public Release
 
-### Method 1: Right-Click Context Menu (Primary Workflow)
-1. Open any Google Doc, Google Sheet, or Google Slide.
-2. Right-click anywhere on the document.
-3. Select **“Save as PDF to Google Drive”**.
-4. On first run, Google will prompt you once to grant access to Google Drive.
-5. Watch the notifications:
-   - *Exporting Document...*
-   - *Uploading Document.pdf...*
-   - *✓ Document.pdf saved to Google Drive*
-6. Check your Google Drive folder: the PDF will be right beside your original file!
+To make Drive PDF Saver available to any Google user on the Chrome Web Store:
 
-### Method 2: Extension Popup
-1. While viewing a Google Doc, Sheet, or Slide, click the extension icon in Chrome's toolbar.
-2. The popup displays the detected document name and service.
-3. Click **Save as PDF**.
+1. **Host Public Documentation**:
+   - Push this repository to GitHub and enable **GitHub Pages** (Settings ➔ Pages ➔ Source: `main` branch, `/ (root)` folder).
+   - Your landing page and privacy policy will be live at: `https://tanmayshah2705.github.io/drive-pdf-saver/`.
+2. **Google Cloud Production Setup**:
+   - Move the OAuth Consent Screen to **Production** (Publish App).
+   - Submit for Google OAuth verification for the `https://www.googleapis.com/auth/drive` scope.
+3. **Chrome Web Store Submission**:
+   - Package the extension into a `.zip` archive:
+     ```powershell
+     Compress-Archive -Path manifest.json, background.js, content.js, icons, popup, services, utils -DestinationPath drive-pdf-saver-v1.0.0.zip
+     ```
+   - Upload the `.zip` to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+   - Fill out store listing details using `STORE_LISTING.md`.
+   - Submit for review.
 
----
-
-## Key Behaviors
-
-### 1. Same Folder Guarantee
-- The extension queries the file's authoritative `parents` list from Google Drive API.
-- The PDF is uploaded to `parents[0]`.
-- If the original document is in **My Drive** (root), the PDF is saved in root.
-- If the document is inside nested folders (e.g. `My Drive / Career / Resumes`), the PDF is created in `Resumes`.
-
-### 2. Duplicate Prevention (In-Place Replacement)
-- If `Resume.pdf` already exists in that folder, the extension **updates the existing PDF's binary content in-place** via a `PATCH` media upload.
-- It preserves the existing PDF's file ID, sharing links, and folder position.
-- It **never** creates duplicate files like `Resume (1).pdf` or `Resume (2).pdf`.
-- The original Google Doc is never modified or replaced.
-
-### 3. Silent-First OAuth (No Repeat Account Choosers)
-- The extension first executes `chrome.identity.getAuthToken({ interactive: false })`.
-- Subsequent exports run completely silently in the background without prompting you.
-- If a token expires (HTTP 401), the cache is cleared and re-authorization is triggered automatically.
-
-### 4. Multi-Account Handling
-- Chrome's identity API authenticates with the primary Google account signed into your Chrome profile.
-- If the document being viewed belongs to a different Google account not accessible by the authenticated token, Google Drive API returns 404 or 403.
-- The extension catches this and displays a clear message:
-  > *"Could not access this file with the authorized Google account. Please ensure the signed-in account has permission."*
-- It **never** silently uploads your PDF to the wrong account.
+> **Full detailed instructions with screenshots and demo video scripts are available in [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md).**
 
 ---
 
-## Supported File Types
+## 6. Multi-Account Handling
 
-| Category | File Formats | Conversion & Export Strategy |
-| :--- | :--- | :--- |
-| **Google Workspace** | Google Docs, Sheets, Slides, Drawings | Direct official Google Drive API `files.export` (`mimeType=application/pdf`) |
-| **Microsoft Word & Text** | `.docx`, `.doc`, `.odt`, `.rtf`, `.txt`, `.html`, `.md` | Drive API temporary copy with Google Docs import (`application/vnd.google-apps.document`) → `files.export` → temporary copy automatically deleted |
-| **Microsoft Excel & Data** | `.xlsx`, `.xls`, `.ods`, `.csv`, `.tsv` | Drive API temporary copy with Google Sheets import (`application/vnd.google-apps.spreadsheet`) → `files.export` → temporary copy automatically deleted |
-| **Microsoft PowerPoint** | `.pptx`, `.ppt`, `.odp` | Drive API temporary copy with Google Slides import (`application/vnd.google-apps.presentation`) → `files.export` → temporary copy automatically deleted |
-| **Images** | `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.bmp` | Direct Drive media download → in-memory `OffscreenCanvas` processing → RFC-compliant PDF Blob construction |
-| **Existing PDF** | `.pdf` | Friendly notice: *"This file is already a PDF in this folder."* |
+Because Google users often have multiple Google accounts (e.g., personal and work/school) open in the same browser session, Drive PDF Saver implements proactive account access verification:
+
+- `chrome.identity.getAuthToken()` authenticates with the Google account signed into the **active Chrome profile**.
+- Before attempting any conversion or upload, `verifyCurrentFileAccess()` calls Google Drive API to verify that the active OAuth token has read/write permissions for the document.
+- If the file is owned by or open in an account different from the Chrome profile, the extension displays a helpful in-page toast:
+  > *"Account mismatch / permission error: Your signed-in Chrome Google account does not have permission to access this file. If you have multiple Google accounts, please ensure this file is shared with your Chrome profile account or switch to the corresponding Chrome profile."*
+- This prevents confusing 400 or 403 errors and prevents accidental uploads to the wrong Drive account.
 
 ---
 
-## Troubleshooting
+## 7. Troubleshooting
 
 ### "Google authorization was not granted"
-- Ensure your Google account is added to the **Test users** list in the Google Cloud Console OAuth consent screen.
-- Verify that the **Client ID** in `manifest.json` matches your Google Cloud Console Chrome extension client ID.
-- Verify that the **Item ID** in the Cloud Console credentials matches the 32-character Extension ID in `chrome://extensions`.
+- Ensure your Google account is signed into the Chrome browser profile (`chrome://settings/people`).
+- Check that popups/redirects are not blocked by third-party ad blockers.
+- During local testing (before OAuth app publication), ensure your email is added under **Test Users** in the Google Cloud Console OAuth consent screen.
 
-### "Could not access this file with the authorized Google account"
-- Check that the active Chrome profile's primary Google account has View/Edit permissions on the document.
-- If you use multiple Google accounts in one browser window, open the document in the Chrome profile matching the document's owner.
+### Context menu does not appear on right-click
+- The context menu item is scoped to Google Workspace and Google Drive URLs (`docs.google.com` and `drive.google.com`).
+- It will not appear on regular websites (e.g. `google.com` or `github.com`).
+- If you just reloaded the extension, refresh the document tab once to allow the content script to attach.
 
-### Inspecting Extension Logs
-1. Navigate to `chrome://extensions`.
-2. Find **Save as PDF to Google Drive**.
-3. Click the link labeled **service worker** (or `Inspect views: service worker`).
-4. In DevTools, view the Console tab for all events prefixed with `[DrivePDF]`.
+### PDF already exists
+- If a file with the name `[Document Name].pdf` already exists in that exact parent folder, the extension automatically updates its content in place.
+- If you want a separate file, simply rename your document before exporting or rename the existing PDF.
+
+---
+
+## 8. License
+
+This project is licensed under the [MIT License](LICENSE).

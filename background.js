@@ -1,8 +1,8 @@
 // background.js — Service Worker (ES Module)
 // Orchestrates PDF export and conversion directly via official Google Drive API v3.
 
-import { getAuthToken } from './services/auth.js';
-import { getFileMetadata, findExistingPdf, uploadNewPdf, updateExistingPdfContent } from './services/drive.js';
+import { getAuthToken, verifyCurrentFileAccess } from './services/auth.js';
+import { findExistingPdf, uploadNewPdf, updateExistingPdfContent } from './services/drive.js';
 import { exportFileToPdf } from './services/export.js';
 import { extractGoogleFileInfo, isConvertible, generatePdfName, getConversionCategory } from './services/file.js';
 import { showProgress, showSuccess, showError } from './utils/notifications.js';
@@ -44,14 +44,17 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 });
 
-// Top-level message listener for popup and other extensions components
+// Top-level message listener for popup and other extension components
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'saveAsPdf') {
     log('Save as PDF requested from popup for tab:', message.tabId);
     
-    processExportPipeline(message.fileInfo)
+    processExportPipeline(message.fileInfo, message.tabId)
       .then((result) => sendResponse({ success: true, ...result }))
-      .catch((err) => sendResponse({ success: false, error: err.message }));
+      .catch((err) => {
+        showError(message.tabId, err.message || 'Failed to save PDF.');
+        sendResponse({ success: false, error: err.message });
+      });
 
     return true; // Keep message channel open for async response
   }
@@ -62,6 +65,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // ============================================================================
 
 async function handleContextMenuAction(tab, pageUrl) {
+  const tabId = tab?.id;
   try {
     let fileInfo = null;
 
@@ -70,23 +74,23 @@ async function handleContextMenuAction(tab, pageUrl) {
     fileInfo = extractGoogleFileInfo(url);
 
     // If not directly parsed, query content script in the active tab
-    if (!fileInfo && tab?.id) {
+    if (!fileInfo && tabId) {
       try {
-        fileInfo = await chrome.tabs.sendMessage(tab.id, { action: 'getFileInfo' });
+        fileInfo = await chrome.tabs.sendMessage(tabId, { action: 'getFileInfo' });
       } catch (scriptErr) {
         log('Content script query failed:', scriptErr);
       }
     }
 
     if (!fileInfo || !fileInfo.fileId) {
-      showError('Could not identify the current Google Drive file.');
+      showError(tabId, 'Could not identify the current Google Drive file.');
       return;
     }
 
-    await processExportPipeline(fileInfo);
+    await processExportPipeline(fileInfo, tabId);
   } catch (err) {
     log('Context menu processing failed:', err);
-    showError(err.message || 'Failed to save PDF to Google Drive.');
+    showError(tabId, err.message || 'Failed to save PDF to Google Drive.');
   }
 }
 
@@ -97,23 +101,24 @@ async function handleContextMenuAction(tab, pageUrl) {
 /**
  * Executes the universal Google Drive PDF export/conversion pipeline.
  * @param {{ fileId: string, service?: string }} fileInfo 
+ * @param {number|null} [tabId] Target browser tab ID for in-page status toasts
  * @returns {Promise<{ pdfName: string, isUpdate: boolean }>}
  */
-async function processExportPipeline(fileInfo) {
+async function processExportPipeline(fileInfo, tabId = null) {
   if (!fileInfo || !fileInfo.fileId) {
     throw new Error('Could not identify the current Google file.');
   }
 
   const { fileId } = fileInfo;
-  log(`Starting export pipeline for file ID: ${fileId}`);
+  log(`Starting export pipeline for file ID: ${fileId}, tab: ${tabId}`);
 
   // Step 1: Obtain Google OAuth token (cached silent-first, interactive fallback)
-  broadcastProgress('Authenticating', 'Connecting to Google Drive...');
+  showProgress(tabId, 'Connecting to Google Drive...', 'Drive PDF Saver');
   const token = await getAuthToken(true);
 
-  // Step 2: Fetch authoritative file metadata from Drive API
-  broadcastProgress('Checking file', 'Retrieving file details...');
-  const metadata = await getFileMetadata(token, fileId);
+  // Step 2: Verify account access and fetch authoritative file metadata from Drive API
+  showProgress(tabId, 'Verifying permissions and file details...', 'Checking Document');
+  const metadata = await verifyCurrentFileAccess(token, fileId);
 
   // Step 3: Verify that the file can be converted to PDF
   if (!isConvertible(metadata.mimeType, metadata.name)) {
@@ -129,9 +134,10 @@ async function processExportPipeline(fileInfo) {
   log(`Resolved file: "${fileName}" (${metadata.mimeType}), Target PDF: "${pdfName}"`);
 
   // Step 4: Export or convert to PDF Blob in-memory
-  showProgress(`Exporting ${fileName}...`);
-  broadcastProgress('Exporting', `Exporting "${fileName}" to PDF...`);
-  const pdfBlob = await exportFileToPdf(token, fileId, metadata, broadcastProgress);
+  showProgress(tabId, `Exporting "${fileName}" to PDF in memory...`, `Exporting ${fileName}`);
+  const pdfBlob = await exportFileToPdf(token, fileId, metadata, (stage, msg) => {
+    showProgress(tabId, msg, stage);
+  });
 
   if (!pdfBlob || pdfBlob.size === 0) {
     throw new Error('PDF conversion produced an empty file.');
@@ -145,40 +151,23 @@ async function processExportPipeline(fileInfo) {
   log(`Target folder ID: ${parentFolderId || 'root'}`);
 
   // Step 6: Check for an existing PDF with the exact same name in that folder
-  broadcastProgress('Checking folder', `Checking for existing "${pdfName}" in folder...`);
+  showProgress(tabId, `Checking for existing "${pdfName}" in folder...`, 'Checking Folder');
   const existingPdf = await findExistingPdf(token, pdfName, parentFolderId);
 
   // Step 7: Update in-place if existing, or Upload new
   let isUpdate = false;
   if (existingPdf) {
-    showProgress(`Updating ${pdfName}...`);
-    broadcastProgress('Updating', `Updating existing "${pdfName}"...`);
+    showProgress(tabId, `Updating existing "${pdfName}" in same folder...`, `Updating ${pdfName}`);
     await updateExistingPdfContent(token, existingPdf.id, pdfBlob);
     isUpdate = true;
-    showSuccess(`✓ ${pdfName} updated in Google Drive`);
+    showSuccess(tabId, `✓ "${pdfName}" updated in the same folder.`, 'Drive PDF Saver');
     log(`Successfully updated existing PDF (ID: ${existingPdf.id}) in same folder.`);
   } else {
-    showProgress(`Uploading ${pdfName}...`);
-    broadcastProgress('Uploading', `Saving "${pdfName}" to same folder...`);
+    showProgress(tabId, `Saving "${pdfName}" to same folder...`, `Uploading ${pdfName}`);
     await uploadNewPdf(token, pdfBlob, pdfName, parentFolderId);
-    showSuccess(`✓ ${pdfName} saved to Google Drive`);
+    showSuccess(tabId, `✓ "${pdfName}" saved to the same folder.`, 'Drive PDF Saver');
     log(`Successfully created new PDF "${pdfName}" in same folder.`);
   }
 
   return { pdfName, isUpdate };
-}
-
-/**
- * Broadcasts progress updates to popup UI if open.
- * @param {string} stage 
- * @param {string} message 
- */
-function broadcastProgress(stage, message) {
-  chrome.runtime.sendMessage({
-    action: 'exportProgress',
-    stage,
-    message
-  }).catch(() => {
-    // Popup might not be open; ignore harmless disconnected port
-  });
 }

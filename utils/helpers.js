@@ -1,6 +1,6 @@
 // utils/helpers.js
-
-export const DEBUG = true;
+ 
+export const DEBUG = false;
 
 /**
  * Log message with standardized extension prefix.

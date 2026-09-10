@@ -47,7 +47,7 @@ export async function getAuthToken(interactiveFallback = true) {
   } catch (err) {
     log('Interactive authorization failed:', err);
     const detail = err?.message ? `: ${err.message}` : '';
-    throw new Error(`Google authorization was not granted${detail}. Please ensure you are signed into Chrome and your account is added as a Test User.`);
+    throw new Error(`Google authorization was not granted${detail}. Please ensure you are signed into Chrome and approve access to Google Drive.`);
   }
 }
 
@@ -63,4 +63,47 @@ export async function clearAuthToken(token) {
   } catch (err) {
     log('Error clearing cached auth token:', err);
   }
+}
+
+/**
+ * Verifies that the current OAuth token has access to the specified Google Drive file.
+ * Catches multi-account mismatch issues before attempting export operations.
+ * 
+ * @param {string} token OAuth access token
+ * @param {string} fileId Google Drive file ID
+ * @returns {Promise<{ id: string, name: string, mimeType: string, parents?: string[] }>}
+ */
+export async function verifyCurrentFileAccess(token, fileId) {
+  log(`Verifying access permissions for file ID: ${fileId}`);
+  const fields = 'id,name,mimeType,parents';
+  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=${encodeURIComponent(fields)}&supportsAllDrives=true`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (response.status === 401) {
+    await clearAuthToken(token);
+    throw new Error('Google authorization expired. Please try again to refresh your session.');
+  }
+
+  if (response.status === 403 || response.status === 404) {
+    throw new Error(
+      'Account mismatch / permission error: Your signed-in Chrome Google account does not have permission to access this file. ' +
+      'If you have multiple Google accounts, please ensure this file is shared with your Chrome profile account or switch to the corresponding Chrome profile.'
+    );
+  }
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    log(`File access check failed (${response.status}):`, errorBody);
+    throw new Error(`Failed to access file on Google Drive (${response.status}).`);
+  }
+
+  const metadata = await response.json();
+  log(`File access verified for: "${metadata.name}" (${metadata.mimeType})`);
+  return metadata;
 }
