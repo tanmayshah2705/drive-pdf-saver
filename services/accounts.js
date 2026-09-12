@@ -12,7 +12,9 @@ const INDEX_MAP_KEY  = 'drive_pdf_account_index_map'; // {[userIndex]: email} in
 
 // -- OAuth constants ----------------------------------------------------------
 const WEB_CLIENT_ID  = '48459272093-0kkpphs9kh70jbd3vnvl33l5qb8okdmi.apps.googleusercontent.com';
-const REDIRECT_URI   = 'https://eebmobehbmcmkpgmbnijlocgacoikpme.chromiumapp.org/';
+const REDIRECT_URI   = typeof chrome !== 'undefined' && chrome.identity?.getRedirectURL
+  ? chrome.identity.getRedirectURL()
+  : 'https://aijdgafbjdkfalbceioihafdkepiikce.chromiumapp.org/';
 const DRIVE_SCOPE    = 'https://www.googleapis.com/auth/drive';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 

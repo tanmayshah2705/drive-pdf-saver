@@ -275,8 +275,8 @@ Drive PDF Saver uses Google Cloud OAuth in **Testing** mode (not Production). Th
 |---|---|
 | OAuth Client Type | Web Application |
 | Client ID | `48459272093-0kkpphs9kh70jbd3vnvl33l5qb8okdmi.apps.googleusercontent.com` |
-| Authorized Redirect URI | `https://eebmobehbmcmkpgmbnijlocgacoikpme.chromiumapp.org/` |
-| Extension ID (fixed) | `eebmobehbmcmkpgmbnijlocgacoikpme` |
+| Authorized Redirect URI | `https://aijdgafbjdkfalbceioihafdkepiikce.chromiumapp.org/` |
+| Extension ID (fixed) | `aijdgafbjdkfalbceioihafdkepiikce` |
 | Scope | `https://www.googleapis.com/auth/drive` |
 | OAuth Consent Status | **Testing** |
 
